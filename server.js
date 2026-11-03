@@ -4,22 +4,19 @@ app.use(express.json());
 
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
 
-const SYSTEM_PROMPT = `You are an expert 3D Roblox builder. Output ONLY a raw JSON object matching the schema.
+const SYSTEM_PROMPT = `You are a master 3D Roblox builder. Output ONLY a raw JSON object matching the schema.
 {"name": "string", "parts": [{"shape": "Block|Wedge|Cylinder|Ball", "size": [x, y, z], "offset": [x, y, z], "color": [r, g, b], "material": "Plastic|Wood|Brick|Concrete|Metal|Neon|Glass", "rotation": [x, y, z]}]}
 
-RULES:
-1. Max 45 parts. Use as many as needed for high detail.
-2. Sizes 0.5-40. Colors 0-255. 
-3. Offset Y is up, lowest part at Y=0. 
-4. Center the build on the X and Z axes.
-5. A Roblox character is 5 studs tall. Cars must be at least 12-16 studs long and 6-8 studs wide.
-6. To make a wheel, use a "Cylinder" shape, and set its rotation to [0, 0, 90] so it rolls sideways.
-7. For a car: Create a detailed chassis, a cabin, glass windows, metal bumpers, neon headlights, and 4 distinct wheels. Make it look aerodynamic.
-8. Ensure parts overlap slightly so there are no floating gaps.`;
+CRITICAL RULES FOR HIGH QUALITY:
+1. Use between 120 and 180 parts. Do not use fewer than 120 parts. We want extreme detail.
+2. To make curves (like a car hood or roof), use many small overlapping blocks and wedges.
+3. To make wheels, you MUST use "Cylinder" shape and set rotation to [0, 0, 90] so they are horizontal.
+4. A Roblox character is 5 studs tall. Cars must be 16-20 studs long, 8 studs wide, and 6 studs tall.
+5. Use "Glass" for windshields, "Neon" for headlights, "Metal" for the chassis, and "Plastic" for the body.
+6. Ensure every part intersects with another part. Do not leave gaps.`;
 
 async function callNvidia(prompt) {
     const controller = new AbortController();
-    // Increased timeout to 115 seconds
     const timeoutId = setTimeout(() => controller.abort(), 115000); 
 
     try {
@@ -30,14 +27,13 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                // Switched back to MiniMax for 3D spatial reasoning
                 model: "minimaxai/minimax-m3.1-flash", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
                 ],
-                temperature: 0.4, 
-                max_tokens: 4000,
+                temperature: 0.5, 
+                max_tokens: 8192, // Pushed to the absolute max to fit 150 parts
                 response_format: { type: "json_object" }, 
                 stream: false
             }),
@@ -70,7 +66,7 @@ async function callNvidia(prompt) {
 app.post('/build', async (req, res) => {
     console.log("--- NEW REQUEST FROM ROBLOX ---");
     try {
-        console.log("AI is building... (this may take up to 60 seconds)");
+        console.log("AI is building a high-detail model (this will take 60-90 seconds)...");
         const buildSpec = await callNvidia(req.body.prompt);
         console.log("Success! Valid JSON sent to Roblox.");
         return res.json(buildSpec);
