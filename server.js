@@ -10,7 +10,8 @@ RULES: Max 60 parts. Sizes 0.5-40. Colors 0-255. Offset Y is up, lowest part at 
 
 async function callNvidia(prompt) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 55000); 
+    // Increased timeout to 115 seconds (Roblox max limit)
+    const timeoutId = setTimeout(() => controller.abort(), 115000); 
 
     try {
         const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
@@ -20,14 +21,14 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                // Using MiniMax from your screenshot's Free Endpoint list
-                model: "minimaxai/minimax-m3.1-flash", 
+                // Switched to Poolside coding model
+                model: "poolside/laguna-xs-2.1", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
                 ],
                 temperature: 0.2,
-                max_tokens: 2500,
+                max_tokens: 3000,
                 stream: false
             }),
             signal: controller.signal
