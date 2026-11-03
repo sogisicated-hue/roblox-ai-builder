@@ -20,13 +20,14 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                model: "nvidia/nemotron-3.5-lightning-30b-a3b", 
+                // Switched to a highly reliable, extremely fast model
+                model: "microsoft/phi-3-mini-128k-instruct", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
                 ],
-                temperature: 0.2,
-                max_tokens: 2500, // Lowered to prevent cutoff
+                temperature: 0.1,
+                max_tokens: 2000, 
                 stream: false
             }),
             signal: controller.signal
@@ -43,10 +44,12 @@ async function callNvidia(prompt) {
         
         let content = json.choices?.[0]?.message?.content || "";
         
-        // Log exactly what the AI said so we can debug
-        console.log("RAW AI OUTPUT:", content.substring(0, 200) + "...");
+        // If NVIDIA sends back nothing, throw a clear error
+        if (content.trim() === "") {
+            throw new Error("NVIDIA returned an empty response (model overloaded).");
+        }
 
-        // Clean up markdown and extract ONLY the JSON object using regex
+        console.log("RAW AI OUTPUT:", content.substring(0, 100) + "...");
         content = content.replace(/```json|```/g, "").trim();
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         
