@@ -10,7 +10,7 @@ RULES: Max 60 parts. Sizes 0.5-40. Colors 0-255. Offset Y is up, lowest part at 
 
 async function callNvidia(prompt) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 50000); 
+    const timeoutId = setTimeout(() => controller.abort(), 55000); 
 
     try {
         const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
@@ -20,14 +20,14 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                // Switched to a fast, lightweight model
-                model: "meta/llama-4-maverick-17b-128e-instruct", 
+                // Switched to an active, fast, smaller model
+                model: "nvidia/nemotron-3-nano-30b-a3b", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
                 ],
-                temperature: 0.1, // Keep it low for strict JSON
-                max_tokens: 2000, // Lowered to speed up generation
+                temperature: 0.2,
+                max_tokens: 2000,
                 stream: false
             }),
             signal: controller.signal
