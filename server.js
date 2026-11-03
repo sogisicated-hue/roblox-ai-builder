@@ -20,8 +20,8 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                // ✅ This is the updated, active model
-                model: "meta/llama-3.3-70b-instruct", 
+                // Updated to a fast, currently supported model
+                model: "nvidia/nemotron-3.5-lightning-30b-a3b", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
@@ -42,8 +42,10 @@ async function callNvidia(prompt) {
         }
 
         const json = await response.json();
+        
         let content = json.choices?.[0]?.message?.content || "";
         content = content.replace(/```json|```/g, "").trim();
+
         const parsed = JSON.parse(content);
         return parsed;
 
@@ -60,8 +62,10 @@ app.post('/build', async (req, res) => {
     try {
         console.log("Sending request to NVIDIA...");
         const buildSpec = await callNvidia(req.body.prompt);
+        
         console.log("NVIDIA responded! Valid JSON found. Sending to Roblox.");
         return res.json(buildSpec);
+
     } catch (error) {
         console.error("PROXY ERROR:", error.message || error);
         return res.status(500).json({ error: "Failed to generate build. Check Render logs." });
