@@ -13,6 +13,10 @@ const SYSTEM_PROMPT = `You are an expert Roblox builder. Output ONLY a JSON obje
 RULES: Max 60 parts. Sizes 0.5-40. Colors 0-255. Offset Y is up, lowest part at Y=0. Use Wedges for roofs, Cylinders for wheels. Ensure parts intersect slightly. Center on X and Z axes.`;
 
 app.post('/build', async (req, res) => {
+  // THIS LINE TELLS US ROBLOX CONNECTED
+  console.log("--- NEW REQUEST FROM ROBLOX ---");
+  console.log("Prompt received:", req.body.prompt);
+
   try {
     const completion = await openai.chat.completions.create({
       model: "nvidia/nemotron-3-ultra-550b-a55b",
@@ -22,10 +26,17 @@ app.post('/build', async (req, res) => {
       chat_template_kwargs: { "enable_thinking": true },
       stream: false
     });
+    
     let raw = completion.choices[0].message.content.replace(/```json|```/g, "").trim();
     return res.json(JSON.parse(raw));
+    
   } catch (error) {
+    // THIS LINE TELLS US IF NVIDIA FAILED
+    console.error("NVIDIA ERROR:", error);
     return res.status(500).json({ error: "Failed" });
   }
 });
-app.listen(process.env.PORT || 3000);
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Server is running and waiting for Roblox...");
+});
