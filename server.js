@@ -20,14 +20,14 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                // Switched to an active, fast, smaller model
-                model: "nvidia/nemotron-3-nano-30b-a3b", 
+                // Using MiniMax from your screenshot's Free Endpoint list
+                model: "minimaxai/minimax-m3.1-flash", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
                 ],
                 temperature: 0.2,
-                max_tokens: 2000,
+                max_tokens: 2500,
                 stream: false
             }),
             signal: controller.signal
