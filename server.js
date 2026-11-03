@@ -4,13 +4,18 @@ app.use(express.json());
 
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
 
-const SYSTEM_PROMPT = `You are an expert Roblox builder. Output ONLY a raw JSON object matching the schema. Do not include markdown code blocks, explanations, or any other text.
+const SYSTEM_PROMPT = `You are an expert Roblox builder. Output ONLY a raw JSON object matching the schema.
 {"name": "string", "parts": [{"shape": "Block|Wedge|Cylinder|Ball", "size": [x, y, z], "offset": [x, y, z], "color": [r, g, b], "material": "Plastic|Wood|Brick|Concrete|Metal|Neon|Glass", "rotation": [x, y, z]}]}
-RULES: Max 60 parts. Sizes 0.5-40. Colors 0-255. Offset Y is up, lowest part at Y=0. Use Wedges for roofs, Cylinders for wheels. Ensure parts intersect slightly. Center on X and Z axes.`;
+RULES: 
+1. Max 30 parts. (Keep it concise so you don't get cut off!)
+2. Sizes 0.5-40. Colors 0-255. 
+3. Offset Y is up, lowest part at Y=0. 
+4. Use Wedges for roofs, Cylinders for wheels. Ensure parts intersect slightly. 
+5. Center on X and Z axes. 
+6. A Roblox character is 5 studs tall. Make your builds large! Cars must be at least 12 studs long. Houses must be at least 20 studs wide.`;
 
 async function callNvidia(prompt) {
     const controller = new AbortController();
-    // Increased timeout to 115 seconds (Roblox max limit)
     const timeoutId = setTimeout(() => controller.abort(), 115000); 
 
     try {
@@ -21,14 +26,14 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                // Switched to Poolside coding model
-                model: "poolside/laguna-xs-2.1", 
+                model: "minimaxai/minimax-m3.1-flash", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
                 ],
-                temperature: 0.2,
-                max_tokens: 3000,
+                temperature: 0.2, 
+                max_tokens: 4096, // Max allowed by most endpoints
+                response_format: { type: "json_object" }, // FORCES STRICT JSON
                 stream: false
             }),
             signal: controller.signal
@@ -42,24 +47,29 @@ async function callNvidia(prompt) {
         }
 
         const json = await response.json();
-        
         let content = json.choices?.[0]?.message?.content || "";
         
         if (content.trim() === "") {
             throw new Error("NVIDIA returned an empty response.");
         }
 
-        console.log("RAW AI OUTPUT:", content.substring(0, 100) + "...");
-        
+        // Clean up any markdown the AI might have slipped in
         content = content.replace(/```json|```/g, "").trim();
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
         
+        // Extract the JSON
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-            throw new Error("AI did not return a JSON object. Raw output was: " + content.substring(0, 100));
+            throw new Error("AI did not return a JSON object.");
         }
 
-        const parsed = JSON.parse(jsonMatch[0]);
-        return parsed;
+        // Parse it safely
+        try {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return parsed;
+        } catch (parseError) {
+            console.error("JSON PARSE FAILED. The AI sent this:", content);
+            throw new Error("The AI's JSON was malformed. Check the logs.");
+        }
 
     } catch (error) {
         clearTimeout(timeoutId);
@@ -72,7 +82,7 @@ app.post('/build', async (req, res) => {
     console.log("Prompt received:", req.body.prompt);
 
     try {
-        console.log("Sending request to NVIDIA...");
+        console.log("Sending request to NVIDIA (waiting up to 2 mins)...");
         const buildSpec = await callNvidia(req.body.prompt);
         
         console.log("NVIDIA responded! Valid JSON found. Sending to Roblox.");
