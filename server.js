@@ -4,7 +4,7 @@ app.use(express.json());
 
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
 
-const SYSTEM_PROMPT = `You are an expert Roblox builder. Output ONLY a JSON object matching the schema. Do not include markdown code blocks or any other text.
+const SYSTEM_PROMPT = `You are an expert Roblox builder. Output ONLY a raw JSON object matching the schema. Do not include markdown code blocks, explanations, or any other text.
 {"name": "string", "parts": [{"shape": "Block|Wedge|Cylinder|Ball", "size": [x, y, z], "offset": [x, y, z], "color": [r, g, b], "material": "Plastic|Wood|Brick|Concrete|Metal|Neon|Glass", "rotation": [x, y, z]}]}
 RULES: Max 60 parts. Sizes 0.5-40. Colors 0-255. Offset Y is up, lowest part at Y=0. Use Wedges for roofs, Cylinders for wheels. Ensure parts intersect slightly. Center on X and Z axes.`;
 
@@ -20,15 +20,13 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                // Updated to a fast, currently supported model
                 model: "nvidia/nemotron-3.5-lightning-30b-a3b", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
                 ],
                 temperature: 0.2,
-                top_p: 0.95,
-                max_tokens: 4000,
+                max_tokens: 2500, // Lowered to prevent cutoff
                 stream: false
             }),
             signal: controller.signal
@@ -44,9 +42,19 @@ async function callNvidia(prompt) {
         const json = await response.json();
         
         let content = json.choices?.[0]?.message?.content || "";
-        content = content.replace(/```json|```/g, "").trim();
+        
+        // Log exactly what the AI said so we can debug
+        console.log("RAW AI OUTPUT:", content.substring(0, 200) + "...");
 
-        const parsed = JSON.parse(content);
+        // Clean up markdown and extract ONLY the JSON object using regex
+        content = content.replace(/```json|```/g, "").trim();
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        
+        if (!jsonMatch) {
+            throw new Error("AI did not return a JSON object. Raw output was: " + content.substring(0, 100));
+        }
+
+        const parsed = JSON.parse(jsonMatch[0]);
         return parsed;
 
     } catch (error) {
