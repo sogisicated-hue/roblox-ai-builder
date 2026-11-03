@@ -10,7 +10,6 @@ RULES: Max 60 parts. Sizes 0.5-40. Colors 0-255. Offset Y is up, lowest part at 
 
 async function callNvidia(prompt) {
     const controller = new AbortController();
-    // Increased timeout to 55 seconds so the AI has time to finish
     const timeoutId = setTimeout(() => controller.abort(), 55000); 
 
     try {
@@ -21,8 +20,8 @@ async function callNvidia(prompt) {
                 "Authorization": `Bearer ${NVIDIA_API_KEY}`
             },
             body: JSON.stringify({
-                // Switched to a faster, highly accurate model
-                model: "meta/llama-3.1-8b-instruct", 
+                // ✅ This is the updated, active model
+                model: "meta/llama-3.3-70b-instruct", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: prompt }
@@ -43,10 +42,8 @@ async function callNvidia(prompt) {
         }
 
         const json = await response.json();
-        
         let content = json.choices?.[0]?.message?.content || "";
         content = content.replace(/```json|```/g, "").trim();
-
         const parsed = JSON.parse(content);
         return parsed;
 
@@ -63,10 +60,8 @@ app.post('/build', async (req, res) => {
     try {
         console.log("Sending request to NVIDIA...");
         const buildSpec = await callNvidia(req.body.prompt);
-        
         console.log("NVIDIA responded! Valid JSON found. Sending to Roblox.");
         return res.json(buildSpec);
-
     } catch (error) {
         console.error("PROXY ERROR:", error.message || error);
         return res.status(500).json({ error: "Failed to generate build. Check Render logs." });
